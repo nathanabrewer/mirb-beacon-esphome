@@ -1,0 +1,124 @@
+esphome:
+  name: mirb-f5ae
+  platform: ESP32
+  board: esp32dev
+
+wifi:
+  ssid: "mirb-f5ae0168"
+  password: "f5ae0168"
+  ap:
+    ssid: "mirb-f5ae0168"
+    password: "f5ae0168"
+
+captive_portal:
+
+logger:
+
+api:
+  password: "f5ae0168"
+
+ota:
+  password: "f5ae0168"
+
+i2c:
+  sda: 21
+  scl: 22
+  scan: True
+
+output:
+  - platform: gpio
+    pin: GPIO13
+    id: gpio_io13
+
+light:
+  - platform: binary
+    name: "CO2 Alert"
+    id: co2_alert_light
+    output: gpio_io13
+
+esp32_ble_tracker:
+
+binary_sensor:
+  - platform: ble_presence
+    mac_address: "00:11:22:33:44:55"
+    name: "Specific BLE Device Presence"
+  - platform: gpio
+    pin: GPIO27
+    name: "Motion Sensor"
+    device_class: motion
+    filters:
+      - delayed_on: 2000ms
+      - delayed_off: 2000ms
+
+sensor:
+  - platform: scd4x
+    co2:
+      name: "CO2 Concentration"
+      id: co2_sensor
+      on_value:
+        then:
+          - if:
+              condition:
+                - sensor.in_range:
+                    id: co2_sensor
+                    above: 900
+              then:
+                - while:
+                    condition:
+                      lambda: 'return id(co2_sensor).state > 900;'
+                    then:
+                      - light.toggle: co2_alert_light
+                      - delay: 500ms
+              else:
+                - light.turn_off: co2_alert_light
+  - platform: scd4x
+    co2:
+      name: "CO2 Concentration"
+    temperature:
+      name: "Temperature"
+    humidity:
+      name: "Humidity"
+    address: 0x62
+    update_interval: 60s
+  - platform: sen5x
+    id: sen54
+    pm_1_0:
+      name: " PM <1µm Weight concentration"
+      id: pm_1_0
+      accuracy_decimals: 1
+    pm_2_5:
+      name: " PM <2.5µm Weight concentration"
+      id: pm_2_5
+      accuracy_decimals: 1
+    pm_4_0:
+      name: " PM <4µm Weight concentration"
+      id: pm_4_0
+      accuracy_decimals: 1
+    pm_10_0:
+      name: " PM <10µm Weight concentration"
+      id: pm_10_0
+      accuracy_decimals: 1
+    temperature:
+      name: "Temperature"
+      accuracy_decimals: 1
+    humidity:
+      name: "Humidity"
+      accuracy_decimals: 0
+    voc:
+      name: "VOC"
+      algorithm_tuning:
+        index_offset: 100
+        learning_time_offset_hours: 12
+        learning_time_gain_hours: 12
+        gating_max_duration_minutes: 180
+        std_initial: 50
+        gain_factor: 230
+    temperature_compensation:
+      offset: 0
+      normalized_offset_slope: 0
+      time_constant: 0
+    acceleration_mode: low
+    store_baseline: true
+    address: 0x69
+    update_interval: 10s
+

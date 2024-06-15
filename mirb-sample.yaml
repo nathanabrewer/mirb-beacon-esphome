@@ -1,0 +1,73 @@
+esphome:
+  name: mirb-f5ae
+  platform: ESP32
+  board: esp32dev
+
+wifi:
+  ssid: "mirb-f5ae0168"
+  password: "f5ae0168"
+  ap:
+    ssid: "mirb-f5ae0168"
+    password: "f5ae0168"
+
+captive_portal:
+
+logger:
+
+api:
+  password: "f5ae0168"
+
+ota:
+  password: "f5ae0168"
+
+i2c:
+  sda: 21
+  scl: 22
+  scan: True
+
+output:
+  - platform: gpio
+    pin: GPIO13
+    id: gpio_io13
+
+light:
+  - platform: binary
+    name: "CO2 Alert"
+    id: co2_alert_light
+    output: gpio_io13
+
+esp32_ble_tracker:
+
+binary_sensor:
+  - platform: ble_presence
+    mac_address: "00:11:22:33:44:55"
+    name: "Specific BLE Device Presence"
+  - platform: gpio
+    pin: GPIO27
+    name: "Motion Sensor"
+    device_class: motion
+    filters:
+      - delayed_on: 2000ms
+      - delayed_off: 2000ms
+
+sensor:
+  - platform: scd4x
+    co2:
+      name: "CO2 Concentration"
+      id: co2_sensor
+      on_value:
+        then:
+          - if:
+              condition:
+                - sensor.in_range:
+                    id: co2_sensor
+                    above: 900
+              then:
+                - while:
+                    condition:
+                      lambda: 'return id(co2_sensor).state > 900;'
+                    then:
+                      - light.toggle: co2_alert_light
+                      - delay: 500ms
+              else:
+                - light.turn_off: co2_alert_light
